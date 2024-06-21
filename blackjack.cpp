@@ -25,13 +25,20 @@ auto rng = default_random_engine {};
  * 
  *  Initially, I want to make a simulation of the poker game blackjack. My requirements
  *  are as follows:
- *      - The player shall have the ability to place a bet, hit, double down, split, or stand
- *      - The player shall be able to ask the dealer for the book move at any point on their turn
- *      - The dealer shall use 4 decks
- *      - The dealer shall shuffle the cards when the boot is empty or near empty
- *      - The table shall have a minimum and maximum bet size
- *      - The game should have some way to track or acknowledge the player's wins/losses
+ *      1. The player shall have the ability to place a bet, hit, double down, split, or stand
+ *      2. The player shall be able to ask the dealer for the book move at any point on their turn
+ *      3. The dealer shall use 4 decks
+ *      4. The dealer shall shuffle the cards when the boot is empty or near empty
+ *      5. The table shall have a minimum and maximum bet size
+ *      6. The game should have some way to track or acknowledge the player's wins/losses
  *  
+ *  Requirements Checklist:
+ *      1. In Progress
+ *      2. In Progress
+ *      3. Completed
+ *      4. Completed
+ *      5. Completed
+ *      6. Not Yet Started
  **********************/
 
 /**********************
@@ -81,15 +88,7 @@ class Card {
 class Deck {
     public:
         // Generates one of each card and stores the result in a vector
-        Deck() {
-            for (int i = 1; i <= 13; i++) {
-                for (int j = 1; j <= 4; j++) {
-                    cards.push_back(Card(i, j));
-                    numCards += 1;
-                }
-            }
-            return;
-        }
+        Deck() {}
 
         // Adds the standard 52 cards to a deck
         void fillDeck() {
@@ -134,6 +133,9 @@ class Deck {
             return;
         }
 
+        // Is this neccessary? 
+        // All card piles are now of class Deck, so there shouldn't be any instances 
+        // where this should be used over the combine function above.
         void addCards(const vector<Card> &source) {
             numCards += source.size();
             cards.insert(cards.end(), source.begin(), source.end());
@@ -338,44 +340,31 @@ void yourTurn(Seat seat) {
 void blackjack() {
     int chips = 20, bet = 0, insurance = -1, numCards = 0;
     bool playing = false, placeInsurance = false;
-    vector<Card> yourHand, dealerHand, discardPile;
+    
+    //vector<Card> yourHand, dealerHand, discardPile;
+    Deck yourHand, dealerHand, discardPile;
 
-    const int NUM_SEATS = 7;
-    vector<vector<Card>> seats(NUM_SEATS); // A vector of vectors to represent seats
+    /*********************
+     * Game setup
+     *********************/
 
     Deck boot = Deck();
-    Deck deck2 = Deck();
-    Deck deck3 = Deck();
-    Deck deck4 = Deck();
 
-    // The game starts by having the dealer combine four decks, then shuffle them all into a boot
-    boot.combine(deck2);
-    boot.combine(deck3);
-    boot.combine(deck4);
+    // The boot shall contain 4 decks of cards, as stated in the requirements
+    boot.fillDeck();
+    boot.fillDeck();
+    boot.fillDeck();
+    boot.fillDeck();
 
     cout << endl << "Shuffling deck..." << endl;
-    this_thread::sleep_for(chrono::seconds(2));
+    //this_thread::sleep_for(chrono::seconds(2));
     boot.shuffle();
 
-    /*
-    // Prompt the player to choose a seat
-    int chosenSeat;
-    cout << "Please choose a seat (1-" << NUM_SEATS << "): ";
-    cin >> chosenSeat;
+    // TESTING!!!!
 
-    
-    // Validate the chosen seat
-    while (chosenSeat < 1 || chosenSeat > NUM_SEATS && !(cin >> chosenSeat)) {
-        // Clears the input buffer to prevent infinite loops
-        cin.clear();
-        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-        cout << "Invalid seat. Please choose a seat between 1 and " << NUM_SEATS << ": ";
-        cin >> chosenSeat;
-    }
-    */
-
-    // ********************************************************************* //
+    /*********************
+     * Game start
+     *********************/
 
     cout << endl << "Welcome to Blackjack! Bets start at 5 chips and go up to 300." << endl;
 
@@ -543,7 +532,7 @@ void blackjack() {
     
 
     // Time to shuffle the boot!
-    if (discardPile.size() > 160) {
+    if (discardPile.num > 160) {
         // Collect all cards from the table and shuffle
         cout << "It is time for a new boot!" << endl;
         boot.addCards(discardPile);
