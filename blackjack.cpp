@@ -273,7 +273,7 @@ void blackjack() {
     // Bets are placed initially
     while ((bet < 5) || (bet > 300) && !(cin >> bet)) {
         cout << "You have " << chips << " chips." << " How much will you bet?" << endl;
-        cin >> bet;
+        //cin >> bet;
 
         // Clears the input buffer to prevent infinite loops
         cin.clear();
@@ -293,10 +293,10 @@ void blackjack() {
     boot.sendCard(yourHand);
     boot.sendCard(dealerHand);
 
-    cout << "The player is dealt " << yourHand.getCard(0) << "." << endl;
+    cout << "Player's hand: " << yourHand.getCard(0) << endl;
     this_thread::sleep_for(chrono::seconds(1));
 
-    cout << "The dealer draws a face down card." << endl;
+    cout << "Dealer's hand: [Face Down Card]" << endl;
     this_thread::sleep_for(chrono::seconds(1));
     cout << endl;
 
@@ -304,10 +304,10 @@ void blackjack() {
     boot.sendCard(yourHand);
     boot.sendCard(dealerHand);
 
-    cout << "Your second card is " << yourHand.getCard(1) << "." << endl; 
+    cout << "Player's hand: " << yourHand.getCard(0) << ", " << yourHand.getCard(1) << endl; 
     this_thread::sleep_for(chrono::seconds(1));
 
-    cout << "The dealer draws " << dealerHand.getCard(1) << "." << endl;
+    cout << "Dealer's hand:" << dealerHand.getCard(1) << endl;
     this_thread::sleep_for(chrono::seconds(1));
     cout << endl;
 
@@ -315,32 +315,32 @@ void blackjack() {
     if (dealerHand.getCard(1).value == 1) {
         aceUpcard = true;
 
-        cout << "UH OH!! Insurance time!" << endl;
-        cout << "The dealer will now take insurance." << endl;
+        cout << "Dealer has an Ace. Insurance time!" << endl;
+        cout << "Players can now place insurance if they would like to." << endl;
         cin >> insurance;
 
-        while ((insurance > bet) || (insurance < 0) && !(cin >> insurance)) {
+        while ((insurance > bet / 2) || (insurance < 0) && !(cin >> insurance)) {
             // Clears the input buffer to prevent infinite loops
             cin.clear();
             cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
             // Let the player know what they did wrong
-            if (insurance > bet) { cout << "You can only place up to half of your original bet in insurance." << endl << endl; }
+            if (insurance > bet / 2) { cout << "You can only place up to half of your original bet in insurance." << endl << endl; }
             if (insurance < 0) {cout << "That is not a valid bet. Please try again." << endl << endl; }
-
-            cin >> insurance;
         }
+
+        chips -= insurance;
     }
 
     // Once insurance has been placed, the dealer will check the card. If they have blackjack, then those who placed insurance will receive 2:1 of their insurance bet. Otherwise, the bet is collected by the dealer and the game continues.
     if (aceUpcard) {
         if (dealerHand.getCard(1).value >= 10) {
-            cout << "The dealer has blackjack! Those who bet insurance will be paid." << endl;
+            cout << "Dealer has Blackjack! Insurance paid." << endl;
             chips += 2*insurance;
             this_thread::sleep_for(chrono::seconds(1));
         }
         else {
-            cout << "The dealer does not have blackjack. Insurance has been collected" << endl;
+            cout << "Dealer does not have Blackjack. Insurance lost." << endl;
             chips -= insurance;
             this_thread::sleep_for(chrono::seconds(1));
         }
