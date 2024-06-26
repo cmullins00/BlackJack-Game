@@ -66,16 +66,19 @@ class Card {
         Card (int v, int s) : value(v), suit(s) {} 
 
         // Allows the value and suit of a card to be printed using '<<'
-        friend ostream& operator<<(ostream& os, const Card& card) {
+        friend ostream& operator<<(ostream& os, const Card& card) 
+        {
             // Define arrays to store rank and suit strings
             const string ranks[] = { "Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King" };
             const string suits[] = { "Clubs", "Spades", "Diamonds", "Hearts" };
 
             // Check if rank and suit values are within the valid ranges
-            if (card.value < 1 || card.value > 13 || card.suit < 1 || card.suit > 4) {
+            if (card.value < 1 || card.value > 13 || card.suit < 1 || card.suit > 4) 
+            {
                 os << "Invalid card! Something went wrong.\n";
             }
-            else {
+            else 
+            {
                 // Output the formatted card information
                 os << ( card.value == 1 ? "an " : "a ") << ranks[card.value - 1] << " of " << suits[card.suit - 1];
             }
@@ -102,48 +105,63 @@ class Deck {
             return;
         }
 
-        // Transfers the top card from the deck to a given vector
-        void transferCard(vector<Card> &destination) {
-            if (cards.empty()) {
+        // Returns the number of cards in a deck
+        int countCards() {
+            return numCards;
+        }
+
+        // Transfers the top card from one deck to another
+        void sendCard(Deck& destination) {
+            if (cards.empty()) { // Check that our deck is not empty
                 cout << "Deck is empty! Cannot transfer a card." << endl;
                 return;
-            } // Check that our deck is not empty
+            } 
+  
+            destination.cards.push_back(cards[0]);  // Transfer the first card to the destination
+            cards.erase(cards.begin());             // Remove the first card from the deck
 
-            destination.push_back(cards[0]);    // Transfer the first card to the destination
-            cards.erase(cards.begin());         // Remove the first card from the deck
+            destination.numCards++;
 
             return;
         }
 
-        // Displays all cards within a deck
-        void showCards(){
-            for (int i = 0; i < numCards; i++) {
-                cout << cards[i] << endl;
+        void sendAllCards(Deck& destination) {
+            while(numCards > 0) {
+                sendCard(destination);
+            }
+
+            return;
+        }
+
+       // Displays all cards within a deck
+        void getCards() const {
+            for (const auto& card : cards) {
+                cout << card << endl;
             }
 
             cout << "This deck has " << numCards << (numCards == 1 ? " card." : " cards." ) << endl;
             return;
         }
 
+        // Displays a single cards from within a deck at the given index
+        const Card& getCard(int index) const {
+            if (index < 0 || index > numCards-1) {
+                // Throws an exception
+                throw out_of_range("Index is not within the valid range.");
+            }
+
+            return cards[index];
+        }
+
         // Combines two decks of cards
-        void combine(const Deck &deck2) {
+        void combine(const Deck& deck2) {
             numCards += deck2.numCards;
             cards.insert(cards.end(), deck2.cards.begin(), deck2.cards.end());
 
             return;
         }
 
-        // Is this neccessary? 
-        // All card piles are now of class Deck, so there shouldn't be any instances 
-        // where this should be used over the combine function above.
-        void addCards(const vector<Card> &source) {
-            numCards += source.size();
-            cards.insert(cards.end(), source.begin(), source.end());
-
-            return;
-        }
-
-        // Shuffles a deck of cards, or two decks together
+        // Shuffles a deck of cards
         void shuffle() {
             // Generate a new seed based on the current time
             unsigned seed = chrono::system_clock::now().time_since_epoch().count();
@@ -155,212 +173,96 @@ class Deck {
             return;
         }
 
+        // Calculates and returns the total value in a player's hand
+        int calculateTotal() const {
+            int total1 = 0, total2 = 0;
+            bool ace = false;
+
+            for (const auto &card : cards) {
+                if (card.value == 1) { // If an Ace is found
+                    total1 += 11;
+                    total2 += 1;
+                    ace = true;
+                } 
+                else if (card.value > 10) { // If a face card is found
+                    total1 += 10;
+                    total2 += 10;
+                } 
+                else { // Default case
+                    total1 += card.value;
+                    total2 += card.value;
+                }
+            }
+
+            // Returns total1 if it is <= 21, otherwise return total2
+            return (total1 <= 21) ? total1 : total2;
+        }
+
+        bool isBusted() const {
+            if (calculateTotal() > 21) { // Check if player has busted
+                return true;
+            }
+
+            // Did not bust!
+            return false;
+        }
+
+        // Used to calculate the winnings for a player
+        int payout(int bet) {
+            // If the player has blackjack
+            if ((calculateTotal() == 21) && (numCards == 2)) {
+                return bet + (bet * 1.5);
+            }
+
+            // If the player wins by regular means
+            return (bet * 2);
+        }
+
+        void bookMove(Deck& dealerHand) {
+
+            // Will recommend hitting or standing,
+            // hit when hand is 11 or less
+            // when your hand is 12-16: if the dealer's card is 7 or higher, it is recommended to hit. If 6 or lower, you may choose to stand since the dealer has a higher chance of busting
+            // if you have a soft 18, its often best to stand, unless the dealer has 9, 10, or ace
+            // If you have a pair of aces or 8s, it is recommended to split these pairs. if splitting isn't an option, then hit instead
+            // if your total hand is 17 or lower, its generally recommended to hit unless the dealer's upcard is weak (4-6)
+
+            // when to double down,
+            // when your hand total is 9: if the dealer's card is 2-6, doubling down is recommended
+            // When your hand total is 10: doubling down is recommended when the dealer has 2-9, as you have a strong chance of winning with a total of 20 or 21
+            // when your hand total is 11: it's almost always recommended to double down with a total of 11, regardless of the dealer's upcard
+            // when you have a soft 16-18: if the dealer's card is weak (4-6), it's recommended to double down on soft 16-18. This is because drawing a 10 won't make you bust, and you have a good chance at improving your hand
+
+            // when to split pairs
+            // pairs of aces or 8s: always split. most casinos only allow you to draw one additional card per split ace
+            // pairs of 2s, 3s, 6s, 7s: split these when the dealer's card is weak (2-7). this gives you a chance to improve your hand against a dealer who is more likely to bust
+            // pairs of 9s: split 9s when the dealer's upcard is weak (2-6, 8, 9). However, when up against a 7, 10, or Ace, it is better to stand
+            // pairs of 4s: split when the dealer's card is weak (5-6)
+            // never split 5s or 10s!
+            return;
+        }
+
     private:
         vector<Card> cards; // Stores all of the cards in the deck
         int numCards = 0;   // How many cards are within the deck
 };
 
-// Used to calculate the winnings for a player
-int payout(int bet, int total, int numCards) {
-    // If the player has blackjack
-    if (total == 21 && numCards == 2) {
-        return bet + (bet * 1.5);
-    }
-
-    // If the player wins by regular means
-    return (bet * 2);
-}
-
-// Calculates the total value in a player's hand. Will return true if the player busts, otherwise false
-bool total(vector<Card> hand) {
-    int total1 = 0, total2 = 0;
-    bool ace = false;
-
-    for (int i = 0; i < hand.size(); i++) {
-        if (hand[i].value == 1) {
-            total1 += 11;
-            total2 += 1;
-            ace = true;
-        } // If an Ace is found
-        else if (hand[i].value > 10) {
-            total1 += 10;
-            total2 += 10;
-        }  // If a face card is found
-        else { 
-            total1 += hand[i].value;
-            total2 += hand[i].value;
-        }
-    }
-
-    // Since total2 is always equal to or less than total1, we know the player is out by checking that value
-    if (total2 <= 21) {
-        cout << endl << "You have ";
-        if (ace && (total1 == 21)) {
-            cout << total1 << endl;
-        }
-        else if (ace && (total1 <= 21)) {
-            cout << total1 << " or " << total2 << endl;
-        } // If the player has an Ace
-        else {
-            cout << total2 << endl;
-        } // Otherwise, print total
-
-        return false;
-    }
-    else {
-        cout << total2 << ", too many!" << endl;
-        this_thread::sleep_for(chrono::seconds(1));
-        return true;
-    }
-}
-
-void sendCard(vector<Card>& hand, vector<Card>& destination) {
-    if (!hand.empty()) {
-        destination.push_back(hand[0]); // Transfer the first card to the destination
-        hand.erase(hand.begin()); // Remove the first card from the deck
-    } else {
-        cout << "Hand is empty! Cannot transfer a card." << endl;
-    }
-
-    return;
-}
-
-void sendAllCards(vector<vector<Card>>& seats, vector<Card>& destination) {
-    for (auto& seat : seats) {
-        for (auto& card : seat) {
-            destination.push_back(card); // Transfer card from each seat to destination
-        }
-    }
-}
-
-void bookMove(vector<Card> yourHand, vector<Card> dealerHand) {
-    
-    // Will recommend hitting or standing,
-    // hit when hand is 11 or less
-    // when your hand is 12-16: if the dealer's card is 7 or higher, it is recommended to hit. If 6 or lower, you may choose to stand since the dealer has a higher chance of busting
-    // if you have a soft 18, its often best to stand, unless the dealer has 9, 10, or ace
-    // If you have a pair of aces or 8s, it is recommended to split these pairs. if splitting isn't an option, then hit instead
-    // if your total hand is 17 or lower, its generally recommended to hit unless the dealer's upcard is weak (4-6)
-
-    // when to double down,
-    // when your hand total is 9: if the dealer's card is 2-6, doubling down is recommended
-    // When your hand total is 10: doubling down is recommended when the dealer has 2-9, as you have a strong chance of winning with a total of 20 or 21
-    // when your hand total is 11: it's almost always recommended to double down with a total of 11, regardless of the dealer's upcard
-    // when you have a soft 16-18: if the dealer's card is weak (4-6), it's recommended to double down on soft 16-18. This is because drawing a 10 won't make you bust, and you have a good chance at improving your hand
-
-    // when to split pairs  
-    // pairs of aces or 8s: always split. most casinos only allow you to draw one additional card per split ace
-    // pairs of 2s, 3s, 6s, 7s: split these when the dealer's card is weak (2-7). this gives you a chance to improve your hand against a dealer who is more likely to bust
-    // pairs of 9s: split 9s when the dealer's upcard is weak (2-6, 8, 9). However, when up against a 7, 10, or Ace, it is better to stand
-    // pairs of 4s: split when the dealer's card is weak (5-6)
-    // never split 5s or 10s!
-    return;
-}
-
-
-
-
-
-/*
-// Processes everything that you do on your turn
-void yourTurn(Seat seat) {
-    int action = -1;
-    bool endTurn = false, bust = false;
-    
-    while (!endTurn && !bust) {
-        // Perform an action on your turn
-        cout << "What will you do?" << endl;
-        cout << "Help [0], Hit [1], Stand [2], Double Down [3], Split [4], Count Chips [5]" << endl;
-
-        while ((action < 0) || (action > 5) && !(cin >> action)) {
-            cin >> action;
-
-            // Clears the input buffer to prevent infinite loops
-            cin.clear();
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-            if (action < 0 || action > 5) {
-                cout << "Invalid action. Please try again." << endl;
-            }
-        }
-
-        switch (action) {
-            case 0: // Help
-                bookMove(yourHand, dealerHand);
-                break;
-            case 1: // Hit
-                boot.transferCard(yourHand);
-                bust = total(yourHand);
-                break;
-            case 2: // Stand
-                total(yourHand);
-                endTurn = true;
-                break;
-            case 3: // Double
-                boot.transferCard(yourHand);
-                bust = total(yourHand);
-                endTurn = true;
-                // End turn
-                break;
-            case 4: // Split
-                if (yourHand[0].value == yourHand[1].value) {
-                    cout << "Splitting..." << endl;
-                    vector<Card> temp;
-
-                    sendCard(yourHand, temp);
-
-                } // Check if the cards match
-                else {
-                    cout << "You may only split when you have a pair." << endl;
-                }
-                break;
-            case 5:
-                cout << endl << "Counting..." << endl;
-                this_thread::sleep_for(chrono::seconds(1));
-                cout << "Chips remaining: " << chips << endl;
-                break;
-        }
-
-        action = -1;
-    }
-    
-    if (bust) {
-        cout << "Busted :(" << endl;
-        bet = 0;
-    }
-    else {
-        cout << "didn't bust :)" << endl;
-        bet = 0;
-    }
-
-    return;
-}
-*/
-
 void blackjack() {
-    int chips = 20, bet = 0, insurance = -1, numCards = 0;
-    bool playing = false, placeInsurance = false;
-    
-    //vector<Card> yourHand, dealerHand, discardPile;
+    int chips = 20, bet = 0, insurance = -1;
+    bool playing = false, aceUpcard = false;
     Deck yourHand, dealerHand, discardPile;
 
     /*********************
      * Game setup
      *********************/
 
-    Deck boot = Deck();
-
     // The boot shall contain 4 decks of cards, as stated in the requirements
+    Deck boot = Deck();
     boot.fillDeck();
     boot.fillDeck();
     boot.fillDeck();
     boot.fillDeck();
-
-    cout << endl << "Shuffling deck..." << endl;
-    //this_thread::sleep_for(chrono::seconds(2));
     boot.shuffle();
-
-    // TESTING!!!!
 
     /*********************
      * Game start
@@ -384,40 +286,37 @@ void blackjack() {
         if (bet > 300) { cout << "You cannot bet more than 300 chips at this table!" << endl; }
     }
 
+    // Remove bet from player's total chips
     chips -= bet;
-    //cout << "All bets have been placed!" << endl;
 
-    // Create a function that goes to all seats with players in them and bets placed, gives them a card
-    // The dealer gives a single card to the players from right to left before placing their own card face down.
-    boot.transferCard(yourHand);
-    boot.transferCard(dealerHand);
+    // The dealer gives a single card to the player before placing their own card face down.
+    boot.sendCard(yourHand);
+    boot.sendCard(dealerHand);
 
-    cout << "Your first card is " << yourHand[0] << endl;
+    cout << "The player is dealt " << yourHand.getCard(0) << "." << endl;
     this_thread::sleep_for(chrono::seconds(1));
 
-    cout << "The dealer receives a face down card" << endl;
+    cout << "The dealer draws a face down card." << endl;
     this_thread::sleep_for(chrono::seconds(1));
-
     cout << endl;
 
-    // The dealer then gives out a second card to all players, and places their second card face up.
-    boot.transferCard(yourHand);
-    boot.transferCard(dealerHand);
+    // The dealer then gives out a second card, and places their second card face up.
+    boot.sendCard(yourHand);
+    boot.sendCard(dealerHand);
 
-    cout << "Your second card is " << yourHand[1] << endl;
+    cout << "Your second card is " << yourHand.getCard(1) << "." << endl; 
     this_thread::sleep_for(chrono::seconds(1));
 
-    cout << "The dealer has " << dealerHand[1] << endl;
+    cout << "The dealer draws " << dealerHand.getCard(1) << "." << endl;
     this_thread::sleep_for(chrono::seconds(1));
-
     cout << endl;
 
     // If the dealer has an Ace, insurance can be placed by the players
-    if (dealerHand[1].value == 1) {
-        placeInsurance = true;
+    if (dealerHand.getCard(1).value == 1) {
+        aceUpcard = true;
 
-        cout << "UH OH!! Insurance time" << endl;
-        cout << "The dealer will now take insurance" << endl;
+        cout << "UH OH!! Insurance time!" << endl;
+        cout << "The dealer will now take insurance." << endl;
         cin >> insurance;
 
         while ((insurance > bet) || (insurance < 0) && !(cin >> insurance)) {
@@ -434,8 +333,8 @@ void blackjack() {
     }
 
     // Once insurance has been placed, the dealer will check the card. If they have blackjack, then those who placed insurance will receive 2:1 of their insurance bet. Otherwise, the bet is collected by the dealer and the game continues.
-    if (placeInsurance) {
-        if (dealerHand[0].value >= 10) {
+    if (aceUpcard) {
+        if (dealerHand.getCard(1).value >= 10) {
             cout << "The dealer has blackjack! Those who bet insurance will be paid." << endl;
             chips += 2*insurance;
             this_thread::sleep_for(chrono::seconds(1));
@@ -447,17 +346,28 @@ void blackjack() {
         }
     }
 
-    total(yourHand);
+    cout << "You have " << yourHand.calculateTotal() << "." << endl << endl;
 
-    //yourTurn();
-
+    // This section should be turned into a function, maybe named playerTurn();
     int action = -1;
     bool endTurn = false, bust = false;
     
     while (!endTurn && !bust) {
         // Perform an action on your turn
-        cout << "What will you do?" << endl;
-        cout << "Help [0], Hit [1], Stand [2], Double Down [3], Split [4], Count Chips [5]" << endl;
+        cout << "What will you do? Enter one of the following numbers:" << endl;
+        cout << "[0] Check the book move" << endl;
+        cout << "[1] Hit" << endl;
+        cout << "[2] Double Down" << endl;
+        cout << "[3] Stand" << endl;
+
+        // If the player has two cards with the same value, they can split
+        if (yourHand.getCard(0).value == yourHand.getCard(1).value) {
+            cout << "[4] Split" << endl;
+        }
+
+        cout << "[5] Count Chips" << endl;
+
+        //cout << "Help [0], Hit [1], Stand [2], Double Down [3], Split [4], Count Chips [5]" << endl;
 
         while ((action < 0) || (action > 5) && !(cin >> action)) {
             cin >> action;
@@ -467,41 +377,45 @@ void blackjack() {
             cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
             if (action < 0 || action > 5) {
-                cout << "Invalid action. Please try again." << endl;
+                cout << endl << "Invalid action. Please try again." << endl;
             }
         }
 
+        cout << endl;
+
         switch (action) {
-            case 0: // Help
-                bookMove(yourHand, dealerHand);
+            case 0: // Check the book move
+                yourHand.bookMove(dealerHand);
                 break;
             case 1: // Hit
-                boot.transferCard(yourHand);
-                bust = total(yourHand);
+                boot.sendCard(yourHand);
+                cout << "You have " << yourHand.calculateTotal() << "." << endl;
+                bust = yourHand.isBusted();
                 break;
-            case 2: // Stand
-                total(yourHand);
-                endTurn = true;
-                break;
-            case 3: // Double
-                boot.transferCard(yourHand);
-                bust = total(yourHand);
+            case 2: // Double down
+                boot.sendCard(yourHand);
+                cout << "You have " << yourHand.calculateTotal() << "." << endl;
+                bust = yourHand.isBusted();
                 endTurn = true;
                 // End turn
                 break;
+            case 3: // Stand
+                cout << "You have " << yourHand.calculateTotal() << "." << endl;
+                endTurn = true;
+                break;
             case 4: // Split
-                if (yourHand[0].value == yourHand[1].value) {
+                if (yourHand.getCard(0).value == yourHand.getCard(1).value) {
                     cout << "Splitting..." << endl;
-                    vector<Card> temp;
+                    Deck secondHand;
 
-                    sendCard(yourHand, temp);
+                    yourHand.sendCard(secondHand);
 
                 } // Check if the cards match
                 else {
                     cout << "You may only split when you have a pair." << endl;
                 }
                 break;
-            case 5:
+            case 5: // Count chips
                 cout << endl << "Counting..." << endl;
                 this_thread::sleep_for(chrono::seconds(1));
                 cout << "Chips remaining: " << chips << endl;
@@ -510,13 +424,34 @@ void blackjack() {
 
         action = -1;
     }
-    
+
+    cout << "The dealer's face down card is " << dealerHand.getCard(0) << endl;
+    cout << "Dealer Total: " << dealerHand.calculateTotal() << endl;
+
+    // Now the dealer must draw cards until they bust, reach 17-21, or have a total of 5 cards
+    while ((dealerHand.calculateTotal() < 17) && (!dealerHand.isBusted()) && (dealerHand.countCards() < 5)) {
+        boot.sendCard(dealerHand);
+
+        cout << "The dealer draws " << dealerHand.getCard(1) << "." << endl;
+        this_thread::sleep_for(chrono::seconds(1));
+        cout << endl;
+    }
+
+    // Check to see if the dealer busted
+    if (dealerHand.isBusted()) {
+        cout << "Too many!" << endl;
+    }
+
+    // Check to see if the player busted
     if (bust) {
         cout << "Busted :(" << endl;
+        cout << "You have " << chips << " chips remaining." << endl;
         bet = 0;
     }
     else {
         cout << "didn't bust :)" << endl;
+        chips += yourHand.payout(bet);
+        cout << "You now have " << chips << " chips." << endl;
         bet = 0;
     }
     
@@ -528,27 +463,26 @@ void blackjack() {
 
 
     // Collects all of the cards from the seats
-    sendAllCards(seats, discardPile);
-    
+    //sendAllCards(seats, discardPile);
 
     // Time to shuffle the boot!
-    if (discardPile.num > 160) {
+    if (boot.countCards() < 50) {
         // Collect all cards from the table and shuffle
         cout << "It is time for a new boot!" << endl;
-        boot.addCards(discardPile);
-        boot.shuffle();       
+        discardPile.sendAllCards(boot);
+        boot.shuffle();
     }
 
     // Check if the player has enough chips to play
     if (chips < 5) {
         int response;
-        cout << "You don't have enough chips to play! Game over." << endl << "Enter [1] to restart the game, or [2] to return to the menu." << endl;
+        cout << "You don't have enough chips to play! Game over." << endl << "Enter [1] to restart the game, or [2] to quit." << endl;
         cin >> response;
         
         while (!(cin >> response)) {
             if (response == 1) {
                 playing = true;
-                cout << "Restarting the game." << endl;
+                cout << "Restarting the game!" << endl;
             } // Start the game over
             else if (response == 2) {
                 cout << "Closing the game." << endl;
@@ -567,49 +501,7 @@ void blackjack() {
 }
 
 int main() {
-    /*
-    Card card = Card(1, 3); // Creates an Ace of Diamonds
-    Card card2 = Card(6, 1); // Creates a 6 of Clubs
-    Card card3 = Card(5, 2); // Creates a 5 of Spades
-
-    card.showCard();
-    card2.showCard();
-    card3.showCard();
-
-    Deck deck = Deck();
-    Deck deck2 = Deck();
-
-    deck.showCards();
-    deck.shuffle();
-    deck.showCards();
-
-    deck.combine(deck2);
-    deck.shuffle();
-    deck.showCards();
-    */
-
     blackjack();
-
-    int response = 0;
-    bool start = false;
-
-    while (!start) {
-        cout << "What game would you like to play? Enter the corresponding number to select your choice." << endl;
-        cout << "Blackjack [1]" << endl;
-
-        cin >> response;
-
-        if (response == 1) { start = true; }
-    }
-
-    switch (response) {
-        case 1:
-            blackjack();
-            break;
-        default:
-            cout << "Unknown game! Please try again" << endl;
-            break;
-    }
 
     return 0;
 }
