@@ -80,7 +80,8 @@ class Card {
             else 
             {
                 // Output the formatted card information
-                os << ( card.value == 1 ? "an " : "a ") << ranks[card.value - 1] << " of " << suits[card.suit - 1];
+                //os << ( card.value == 1 ? "an " : "a ") << ranks[card.value - 1] << " of " << suits[card.suit - 1];
+                os << ranks[card.value - 1] << " of " << suits[card.suit - 1];
             }
 
             return os;
@@ -273,18 +274,18 @@ void blackjack() {
     // Bets are placed initially
     while ((bet < 5) || (bet > 300) && !(cin >> bet)) {
         cout << "You have " << chips << " chips." << " How much will you bet?" << endl;
-        //cin >> bet;
+        cin >> bet;
 
         // Clears the input buffer to prevent infinite loops
         cin.clear();
         cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-        
         // Let the player know what they did wrong
-        cout << endl;
         if (bet < 5) { cout << "You must bet at least 5 chips to play!" << endl; }
         if (bet > 300) { cout << "You cannot bet more than 300 chips at this table!" << endl; }
     }
+
+    cout << endl;
 
     // Remove bet from player's total chips
     chips -= bet;
@@ -307,7 +308,7 @@ void blackjack() {
     cout << "Player's hand: " << yourHand.getCard(0) << ", " << yourHand.getCard(1) << endl; 
     this_thread::sleep_for(chrono::seconds(1));
 
-    cout << "Dealer's hand:" << dealerHand.getCard(1) << endl;
+    cout << "Dealer's hand: [Face Down Card], " << dealerHand.getCard(1) << endl;
     this_thread::sleep_for(chrono::seconds(1));
     cout << endl;
 
@@ -317,16 +318,17 @@ void blackjack() {
 
         cout << "Dealer has an Ace. Insurance time!" << endl;
         cout << "Players can now place insurance if they would like to." << endl;
-        cin >> insurance;
 
         while ((insurance > bet / 2) || (insurance < 0) && !(cin >> insurance)) {
-            // Clears the input buffer to prevent infinite loops
-            cin.clear();
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            cin >> insurance;
 
             // Let the player know what they did wrong
             if (insurance > bet / 2) { cout << "You can only place up to half of your original bet in insurance." << endl << endl; }
             if (insurance < 0) {cout << "That is not a valid bet. Please try again." << endl << endl; }
+
+            // Clears the input buffer to prevent infinite loops
+            cin.clear();
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
 
         chips -= insurance;
@@ -346,7 +348,7 @@ void blackjack() {
         }
     }
 
-    cout << "You have " << yourHand.calculateTotal() << "." << endl << endl;
+    cout << "Your total: " << yourHand.calculateTotal() << endl;
 
     // This section should be turned into a function, maybe named playerTurn();
     int action = -1;
@@ -354,8 +356,8 @@ void blackjack() {
     
     while (!endTurn && !bust) {
         // Perform an action on your turn
-        cout << "What will you do? Enter one of the following numbers:" << endl;
-        cout << "[0] Check the book move" << endl;
+        cout << "Choose an action:" << endl;
+        cout << "[0] Book Move" << endl;
         cout << "[1] Hit" << endl;
         cout << "[2] Double Down" << endl;
         cout << "[3] Stand" << endl;
@@ -368,17 +370,14 @@ void blackjack() {
         cout << "[5] Count Chips" << endl;
 
         //cout << "Help [0], Hit [1], Stand [2], Double Down [3], Split [4], Count Chips [5]" << endl;
+        cin >> action;
 
         while ((action < 0) || (action > 5) && !(cin >> action)) {
-            cin >> action;
+            cout << endl << "Invalid action. Please choose again." << endl;
 
             // Clears the input buffer to prevent infinite loops
             cin.clear();
             cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-            if (action < 0 || action > 5) {
-                cout << endl << "Invalid action. Please try again." << endl;
-            }
         }
 
         cout << endl;
@@ -394,67 +393,63 @@ void blackjack() {
                 break;
             case 2: // Double down
                 boot.sendCard(yourHand);
-                cout << "You have " << yourHand.calculateTotal() << "." << endl;
+                cout << "You have " << yourHand.calculateTotal() << "." << endl << endl;
                 bust = yourHand.isBusted();
                 endTurn = true;
                 // End turn
                 break;
             case 3: // Stand
-                cout << "You have " << yourHand.calculateTotal() << "." << endl;
+                cout << "You have " << yourHand.calculateTotal() << "." << endl << endl;
                 endTurn = true;
                 break;
             case 4: // Split
                 if (yourHand.getCard(0).value == yourHand.getCard(1).value) {
                     cout << "Splitting..." << endl;
                     Deck secondHand;
-
                     yourHand.sendCard(secondHand);
+                    this_thread::sleep_for(chrono::seconds(1));
 
                 } // Check if the cards match
                 else {
-                    cout << "You may only split when you have a pair." << endl;
+                    cout << "You may only split pairs." << endl;
                 }
                 break;
             case 5: // Count chips
-                cout << endl << "Counting..." << endl;
+                cout << "Chips: " << chips << endl;
                 this_thread::sleep_for(chrono::seconds(1));
-                cout << "Chips remaining: " << chips << endl;
                 break;
         }
 
         action = -1;
     }
 
-    cout << "The dealer's face down card is " << dealerHand.getCard(0) << endl;
-    cout << "Dealer Total: " << dealerHand.calculateTotal() << endl;
+    cout << "Dealer's hand: " << dealerHand.getCard(0) << ", " << dealerHand.getCard(1) << endl;
+    cout << "Dealer's total: " << dealerHand.calculateTotal() << endl << endl;
 
     // Now the dealer must draw cards until they bust, reach 17-21, or have a total of 5 cards
-    while ((dealerHand.calculateTotal() < 17) && (!dealerHand.isBusted()) && (dealerHand.countCards() < 5)) {
+    while ((!bust) && (dealerHand.calculateTotal() < 17) && (!dealerHand.isBusted()) && (dealerHand.countCards() < 5)) {
         boot.sendCard(dealerHand);
 
-        cout << "The dealer draws " << dealerHand.getCard(1) << "." << endl;
+        cout << "Dealer draws: " << dealerHand.getCard(dealerHand.countCards() - 1) << endl;
+        cout << "Dealer total: " << dealerHand.calculateTotal() << endl << endl;
         this_thread::sleep_for(chrono::seconds(1));
-        cout << endl;
     }
 
     // Check to see if the dealer busted
     if (dealerHand.isBusted()) {
-        cout << "Too many!" << endl;
-    }
-
-    // Check to see if the player busted
-    if (bust) {
-        cout << "Busted :(" << endl;
-        cout << "You have " << chips << " chips remaining." << endl;
-        bet = 0;
-    }
-    else {
-        cout << "didn't bust :)" << endl;
+        cout << "Dealer busted! You win!" << endl;
         chips += yourHand.payout(bet);
-        cout << "You now have " << chips << " chips." << endl;
-        bet = 0;
+    }  else if (bust || yourHand.calculateTotal() < dealerHand.calculateTotal()) {
+        cout << "You lose!" << endl;
+    } else if (yourHand.calculateTotal() > dealerHand.calculateTotal()) {
+        cout << "You win!" << endl;
+        chips += yourHand.payout(bet);
+    } else {
+        cout << "Push! It's a tie." << endl;
+        chips += bet;
     }
     
+    bet = 0;
     // If the player and dealer both have blackjack, then it is a push (a tie), and the player neither wins nor loses money on the hand.
     // If the game has continued, any players that have blackjack will be paid out immediately.
 
@@ -475,25 +470,19 @@ void blackjack() {
 
     // Check if the player has enough chips to play
     if (chips < 5) {
-        int response;
-        cout << "You don't have enough chips to play! Game over." << endl << "Enter [1] to restart the game, or [2] to quit." << endl;
+        cout << "Not enough chips to continue. Game over." << endl;
+    }
+    else {
+        cout << "Continue playing? (Y/N)" << endl;
+
+        char response;
         cin >> response;
         
-        while (!(cin >> response)) {
-            if (response == 1) {
-                playing = true;
-                cout << "Restarting the game!" << endl;
-            } // Start the game over
-            else if (response == 2) {
-                cout << "Closing the game." << endl;
-                playing = false;
-            } // Close the game
-            
-            // Clear input buffer to prevent infinite loop
-            cin.clear();
-            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-            cin >> response;
+        if (response == 'Y' || response == 'y') {
+            blackjack();
+        }
+        else {
+            cout << "Exiting the game." << endl;
         }
     }
 
