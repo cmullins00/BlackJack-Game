@@ -477,11 +477,13 @@ void blackjack() {
 
         char response;
         cin >> response;
+        cout << endl;
         
         if (response == 'Y' || response == 'y') {
             blackjack();
         }
         else {
+            cout << "You leave the table with " << chips << " chips." << endl;
             cout << "Exiting the game." << endl;
         }
     }
